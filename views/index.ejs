@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang='en'>
+  <head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/bootstrap/css/bootstrap.css' />
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+    <script src='/socket.io/socket.io.js'></script>
+    <script>
+    	var socket = io.connect('http://localhost:3000');
+      var connected = false;
+      var username = '';
+      var questions;
+
+      socket.on('newUserList', function(data){
+        $(".connectedUsers").html('');
+        console.log("THIS IS THE DATA");
+        console.log(data);
+        console.log(data.users);
+        data.users.forEach(function(user) {
+            console.log("This is the individual user");
+            console.log(user);
+            $(".connectedUsers").append("<div id='"+user.name+"'><span class='username'>" + user.name + "</span> : <span class='points'>" + user.points + "</span></div>");
+        });
+      });
+
+      socket.on('updateUserList', function(received){
+    
+        if(received.connectionType ==  'add'){
+          $(".connectedUsers").append("<div id='"+received.user.name+"'><span class='username'>" + received.user.name + "</span> : <span class='points'>" + received.user.points + "</span></div>");
+          $("#info").append("<div>" + received.user.name + " just connected</div>");          
+        } else {
+          //$("#"+received.user.name).remove();
+          $("#info").append("<div>" + received.user.name + " disconnected</div>");
+        }
+      });
+
+      socket.on('sendQuestions', function(data){
+        $(".show_index").fadeOut('slow', function(){
+          location.replace("#1");
+          question = get_question(0);
+          $(".show_questions").fadeIn('slow');
+        });
+        //console.log(data);
+        questions = data.questions;
+      });
+
+      function get_question(number){
+          var question = questions[number];
+          $("#question").data('index', number); 
+          $("#question_title").text("").text(question.question);
+          $("#question_options").html("");
+          $.each(question.choices, function(i, item){
+            $("#question_options").append("<div><input type='checkbox' value='"+i+"'/> "+item+"</div>");
+          });
+          $("#correctAnswer").text("").text(question.correctAnswer);
+      }
+
+      $(document).ready(function(){
+        $('#btnJoin').on('click', function(){
+          username = prompt("Username bitch");
+          if(username !=''){
+            socket.emit('addUser', {username:username, points:0});
+            connected = true;
+          } else {
+            alert("USERNAME PLEASE!");
+          }
+        });
+      });
+
+    </script>
+  </head>
+  <body>
+    <div class='container-fluid'>
+      <div class='row'>
+        <div class='span12'>
+          <h1>Lokaverkefni</h1>
+        </div>
+      </div>
+      <div class='row'>
+        <div class='span4'>
+          <div class='well'>
+            <h3>Leikmenn</h3>
+            <div class='connectedUsers'>
+            </div>
+          </div>
+        </div>
+        <div class='span8'>
+          <div class='hero-unit'>
+            <div class="show_index">
+              <button id='btnJoin' class='btn btn-primary'>Hefja spurningaleikinn</button>
+            </div>
+            <div class='show_questions' style='display:none;'>
+              <div id='question' data-index="">
+                <h3 id='question_title'></h3>
+                <div id='question_options'></div>
+                <button class='btn btn-success' id="checkAnswer">Skrá svar</button>
+                <div style='display:none;' id="correctAnswer"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class='span4'>
+          <div class='well'>
+            <h3>Upplýsingar</h3>
+            <div id='info'>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
+<script type="text/javascript">
+  $("#checkAnswer").click(function () {
+    //find the index of the correct answer to the question
+    var correctAnswer = $(this).siblings('#correctAnswer').text();
+    console.log(correctAnswer);
+    //find the selected index by the user
+    var selectedAnswer = $(this).siblings('#question_options').find("input:checked").val()
+    console.log(selectedAnswer);
+    if (selectedAnswer == correctAnswer) {
+      updateScore(username);
+    }
+    else{
+      socket.emit('wrongAnswer', {username});
+      console.log("senttoserver");
+    }
+    var nextQuestion = $("#question").data('index') + 1;
+    if (nextQuestion == questions.length) {
+      gameOver(username);
+    }
+    else{
+      get_question(nextQuestion);
+    }
+  });
+  //Code for scores
+  function updateScore(user) {
+    var originalScore = $("#" + user).find(".points").text();
+    console.log(originalScore);
+    var newScore = parseInt(originalScore) + 1;
+    console.log(newScore);
+    $("#" + user).find(".points").text("");
+    $("#" + user).find(".points").text(newScore);
+    socket.emit('correctAnswer', {username:user, points:newScore});
+  }
+  socket.on('updatePoints', function(received){
+    $("#" + received.data.name).find('.points').text("").text(received.data.points);
+    $("#info").append("<div>" + received.data.name + " scored a point</div>")
+  });
+  socket.on('incorrectAnswer', function(received){
+    console.log(received);
+    $("#info").append("<div>" + received.data.username + " answered incorrectly</div>")
+  });
+  //code that ends the fucking game
+  function gameOver(username) {
+    var points = $("#" + username).find('.points').text();
+    socket.emit('makeAwareOfFinishing', {username:username, points:points});
+  }
+  socket.on('sendFinishToClients', function(received){
+    console.log(received);
+    $("#info").append("<div>" + received.data.username + " finished the game with " + received.data.points + " points of " + questions.length + " available</div>");
+    $("#question_options").remove();
+    $("#checkAnswer").remove();
+    $("#question_title").text("").text("Þú hefur lokið leiknum");
+  });
+</script>

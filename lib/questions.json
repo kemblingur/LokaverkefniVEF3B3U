@@ -1,0 +1,6 @@
+{"questions":[
+	{"question": "Hver er forsætisráðherra Breta?", "choices": ["David Cameron", "Gordon Brown", "Winston Churchill", "Tony Blair"], "correctAnswer":0},
+	{"question": "Hérna er spurning", "choices": ["Þetta svar gæti verið rétt?", "En þetta gæti líka verið það?"], "correctAnswer":0},
+	{"question": "Hvað er uppáhalds liturinn minn?", "choices": ["Svartur", "Blár", "Gulur", "Grænn"], "correctAnswer":1},
+	{"question": "Hver er tilgangur lífsins?", "choices": ["Hversu ömurleg spurning", "Vá gaur, reyndu betur"], "correctAnswer":1}
+]}
